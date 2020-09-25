@@ -1,0 +1,119 @@
+{
+  "version": "2",
+  "type": "segmentation",
+  "labels": [
+    "brain tumor core",
+    "brain whole tumor",
+    "brain enhancing tumor"
+  ],
+  "description": "A pre-trained model for volumetric (3D) segmentation of brain tumors from multimodal MRIs based on BraTS 2018 data",
+  "pre_transforms": [
+    {
+      "name": "LoadNifti",
+      "args": {
+        "fields": "image"
+      }
+    },
+    {
+      "name": "ScaleByResolution",
+      "args": {
+        "fields": "image",
+        "target_resolution": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "name": "ConvertToChannelsFirst",
+      "args": {
+        "fields": "image"
+      }
+    },
+    {
+      "name": "NormalizeNonzeroIntensities",
+      "args": {
+        "fields": "image"
+      }
+    }
+  ],
+  "inference": {
+    "image": "image",
+    "scanning_window": true,
+    "batch_size": 1,
+    "roi": [
+      224,
+      224,
+      128
+    ],
+    "tf": {
+      "input_nodes": {
+        "image": "NV_MODEL_INPUT"
+      },
+      "output_nodes": {
+        "model": "NV_MODEL_OUTPUT"
+      }
+    },
+    "trtis": {
+      "input_channels": {
+        "image": 4
+      },
+      "output_channels": {
+        "model": 3
+      },
+      "gpu_instance_count": 1,
+      "max_batch_size": 8
+    }
+  },
+  "post_transforms": [
+    {
+      "name": "FilterProbabilityThreshold",
+      "args": {
+        "label_field": "model",
+        "threshold": 0.5
+      }
+    },
+    {
+      "name": "ArgmaxAcrossChannels",
+      "args": {
+        "fields": "model"
+      }
+    },
+    {
+      "name": "FetchExtremePoints",
+      "args": {
+        "image_field": "image",
+        "label_field": "model",
+        "points": "points"
+      }
+    },
+    {
+      "name": "CopyProperties",
+      "args": {
+        "fields": [
+          "model"
+        ],
+        "from_field": "image",
+        "properties": [
+          "affine"
+        ]
+      }
+    },
+    {
+      "name": "RestoreOriginalShape",
+      "args": {
+        "field": "model",
+        "src_field": "image",
+        "is_label": true
+      }
+    }
+  ],
+  "writer": {
+    "name": "WriteNifti",
+    "args": {
+      "field": "model",
+      "dtype": "uint8"
+    }
+  }
+}
