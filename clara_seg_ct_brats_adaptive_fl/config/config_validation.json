@@ -1,0 +1,157 @@
+{
+  "use_scanning_window": true,
+  "batch_size": 1,
+  "use_amp": false,
+  "inferer":
+  {
+      "name": "TFScanWindowInferer",
+      "args": {
+        "roi_size": [128, 128, 128],
+        "batch_size": 1
+      }
+  },
+  "model_loader":
+  {
+        "name": "CheckpointLoader",
+        "args": {
+          "checkpoint_dir": "{MMAR_CKPT_DIR}",
+          "checkpoint_file_prefix": "FL_global_model.ckpt-{ROUND_NUM}"
+        }
+  },
+  "multi_gpu": false,
+  "pre_transforms":
+  [
+      {
+        "name": "LoadNifti",
+        "args": {
+          "fields": [
+            "image"
+          ]
+        }
+      },
+      {
+        "name": "ConvertToChannelsFirst",
+        "args": {
+          "fields": [
+            "image"
+          ]
+        }
+      },
+      {
+        "name": "NormalizeNonzeroIntensities",
+        "args": {
+          "fields": "image"
+        }
+      }
+  ],
+  "post_transforms": [
+    {
+      "name": "ThresholdValues",
+      "args": {
+        "fields": "model",
+        "threshold": 0.5
+      }
+    },
+    {
+      "name": "SplitAcrossChannels",
+      "args": {
+        "field": "model",
+        "channel_names": [
+          "TC",
+          "WT",
+          "ET"
+        ]
+      }
+    }
+  ],
+  "label_transforms": [
+    {
+      "name": "LoadNifti",
+      "args": {
+        "fields": "label"
+      }
+    },
+    {
+      "name": "ConvertToChannelsFirst",
+      "args": {
+        "fields": [
+          "label"
+        ]
+      }
+    },
+    {
+      "name": "ConvertToMultiChannelBasedOnBratsClasses",
+      "args": {
+        "fields": [
+          "label"
+        ]
+      }
+    },
+    {
+      "name": "SplitAcrossChannels",
+      "args": {
+        "field": "label",
+        "channel_names": [
+          "TC_label",
+          "WT_label",
+          "ET_label"
+        ]
+      }
+    }
+  ],
+  "val_metrics": [
+    {
+      "name": "ComputeAverageDice",
+      "args": {
+        "name": "mean_dice_TC",
+        "field": "TC",
+        "label_field": "TC_label",
+        "report_path": "{MMAR_EVAL_OUTPUT_PATH}"
+      }
+    },
+    {
+      "name": "ComputeAverageDice",
+      "args": {
+        "name": "mean_dice_WT",
+        "field": "WT",
+        "label_field": "WT_label",
+        "report_path": "{MMAR_EVAL_OUTPUT_PATH}"
+      }
+    },
+    {
+      "name": "ComputeAverageDice",
+      "args": {
+        "name": "mean_dice_ET",
+        "field": "ET",
+        "label_field": "ET_label",
+        "report_path": "{MMAR_EVAL_OUTPUT_PATH}"
+      }
+    }
+  ],
+  "writers": [
+    {
+      "args": {
+        "field": "TC",
+        "dtype": "uint8",
+        "write_path": "{MMAR_EVAL_OUTPUT_PATH}"
+      },
+      "name": "WriteNifti"
+    },
+    {
+      "args": {
+        "field": "WT",
+        "dtype": "uint8",
+        "write_path": "{MMAR_EVAL_OUTPUT_PATH}"
+      },
+      "name": "WriteNifti"
+    },
+    {
+      "args": {
+        "field": "ET",
+        "dtype": "uint8",
+        "write_path": "{MMAR_EVAL_OUTPUT_PATH}"
+      },
+      "name": "WriteNifti"
+    }
+  ]
+}

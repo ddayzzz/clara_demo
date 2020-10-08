@@ -1,0 +1,6 @@
+Replacing some pre-defined components...
+'/mmar/clara_seg_ct_brats_adaptive_fl/commands/../components/server_model_manager.py' -> '/opt/nvidia/medical/fed_learn/server/server_model_manager.py'
+'/mmar/clara_seg_ct_brats_adaptive_fl/commands/../components/fed_server.py' -> '/opt/nvidia/medical/fed_learn/server/fed_server.py'
+MMAR_ROOT set to /mmar/clara_seg_ct_brats_adaptive_fl/commands/..
+2020-10-02 16:13:00,478 - __main__ - INFO - Starting aggregation server with config:
+2020-10-02 16:13:00,478 - __main__ - INFO - config/config_fed_server.json

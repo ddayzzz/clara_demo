@@ -1,0 +1,116 @@
+{
+  "version": "2",
+  "type": "segmentation",
+  "labels": [
+    "spleen"
+  ],
+  "description": "A pre-trained model for volumetric (3D) segmentation of the spleen from CT image",
+  "pre_transforms": [
+    {
+      "name": "LoadNifti",
+      "args": {
+        "fields": "image"
+      }
+    },
+    {
+      "name": "ConvertToChannelsFirst",
+      "args": {
+        "fields": "image"
+      }
+    },
+    {
+      "name": "ScaleByResolution",
+      "args": {
+        "fields": "image",
+        "target_resolution": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "name": "ScaleIntensityRange",
+      "args": {
+        "fields": "image",
+        "a_min": -57,
+        "a_max": 164,
+        "b_min": 0.0,
+        "b_max": 1.0,
+        "clip": true
+      }
+    }
+  ],
+  "inference": {
+    "image": "image",
+    "scanning_window": true,
+    "batch_size": 3,
+    "roi": [
+      160,
+      160,
+      160
+    ],
+    "tf": {
+      "input_nodes": {
+        "image": "NV_MODEL_INPUT"
+      },
+      "output_nodes": {
+        "model": "NV_MODEL_OUTPUT"
+      }
+    },
+    "trtis": {
+      "input_channels": {
+        "image": 1
+      },
+      "output_channels": {
+        "model": 2
+      },
+      "gpu_instance_count": 1,
+      "max_batch_size": 8
+    }
+  },
+  "post_transforms": [
+    {
+      "name": "ArgmaxAcrossChannels",
+      "args": {
+        "fields": "model"
+      }
+    },
+    {
+      "name": "FetchExtremePoints",
+      "args": {
+        "image_field": "image",
+        "label_field": "model",
+        "points": "points"
+      }
+    },
+    {
+      "name": "CopyProperties",
+      "args": {
+        "fields": [
+          "model"
+        ],
+        "from_field": "image",
+        "properties": [
+          "affine"
+        ]
+      }
+    },
+    {
+      "name": "RestoreOriginalShape",
+      "args": {
+        "field": "model",
+        "src_field": "image",
+        "is_label": true
+      }
+    }
+  ],
+  "writer": {
+    "name": "WriteNifti",
+    "args": {
+      "field": "model",
+      "dtype": "uint8"
+    }
+  }
+}
+

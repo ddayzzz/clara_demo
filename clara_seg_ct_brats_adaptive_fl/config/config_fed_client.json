@@ -1,0 +1,28 @@
+{
+    "servers": [
+        {
+            "name": "brats_segmentation",
+            "service": {
+                "target": "192.168.1.101:28004",
+                "options": [
+                    ["grpc.max_send_message_length",    1000000000],
+                    ["grpc.max_receive_message_length", 1000000000]
+                ]
+            }
+        }
+    ],
+    "client": {
+        "local_epochs": 1,
+        "steps_aggregation": 0,
+        "exclude_vars": "dummy",
+        "privacy": {
+        },
+        "data_assembler": {
+            "name": "DataAssembler"
+        },
+        "retry_timeout": 30,
+        "ssl_private_key": "resources/certs/client1.key",
+        "ssl_cert": "resources/certs/client1.crt",
+        "ssl_root_cert": "resources/certs/rootCA.pem"
+    }
+}
