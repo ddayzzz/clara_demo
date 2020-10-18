@@ -5,6 +5,7 @@ my_dir="$(dirname "$0")"
 
 echo "MMAR_ROOT set to $MMAR_ROOT"
 echo "Validation on round range: start=$1, end=$2, step=$3"
+echo "Experiment name is $4"
 
 start=$1
 end=$2
@@ -27,5 +28,6 @@ do
       do_validation=true \
       output_infer_result=false \
       MMAR_EVAL_OUTPUT_PATH=$report_path \
+      MMAR_CKPT_DIR="${MMAR_ROOT}/models/$4" \
       ROUND_NUM=$i
 done

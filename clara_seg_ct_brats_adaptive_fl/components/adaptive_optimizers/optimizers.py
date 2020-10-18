@@ -57,7 +57,6 @@ class AdaptiveOptimizer(abc.ABC):
                  decay_steps=None,
                  staircase=False,
                  warmup_steps=None):
-        assert lr_decay_policy == 'constant', 'Only support constant lr scheduler'
         if lr_decay_policy == 'constant':
             scheduler = warmup_learning_rate(lr, warmup_steps=warmup_steps, fn=lambda _: lr)
         elif lr_decay_policy == 'exp_decay':
@@ -132,7 +131,9 @@ class Adam(AdaptiveOptimizer):
     def __init__(self,
                  lr=1.0,
                  lr_decay_policy: str = 'constant',
-                 betas=(0.9, 0.999), eps=1e-8,
+                 beta0=0.9,
+                 beta1=0.999,
+                 epsilon=1e-8,
                  decay_rate=None,
                  decay_steps=None,
                  staircase=False,
@@ -144,8 +145,10 @@ class Adam(AdaptiveOptimizer):
                                    decay_steps=decay_steps,
                                    staircase=staircase,
                                    warmup_steps=warmup_steps)
-        self.momentum = momentum
-        self.buffer = dict()
+        self.beta0 = beta0
+        self.beta1 = beta1
+        self.epsilon = epsilon
+        self.buffer = {'m': dict(), 'v': dict(), 'step': dict()}
 
     def step_pseudo_grads(self,
                           round_i: int,
@@ -153,22 +156,28 @@ class Adam(AdaptiveOptimizer):
                           pseudo_grads: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
         result = dict()
         for p_name, p in global_model.items():
-            grad = -pseudo_grads[p_name]
-            if self.momentum != 0:
-                if p_name not in self.buffer:
-                    # 复制当前的参数
-                    # v_{t} = grad
-                    grad = self.buffer[p_name] = np.copy(grad)
-                else:
-                    # v_{t+1} = v_t * momentum - grad
-                    # TODO 这里的实现方式来自于 pytorch 和 tf(https://www.tensorflow.org/versions/r1.15/api_docs/python/tf/keras/optimizers/SGD) 略有不同
-                    self.buffer[p_name] *= self.momentum
-                    self.buffer[p_name] += grad
-                    grad = self.buffer[p_name]
-            # 更新梯度.
-            # TODO 对于服务端你的SGD, delta 的格式为 client - init_model, 学习率为 1.0, 模型更新方式是 +(SGD 可以这么实现),
-            #  如果调换 delta 的位置, 模型更新就是标准方式, 这也是 FEDADAM, YOGI 等的方式;
-            #  但问题是, momentum 计算需要与正的梯度
-            # 这里使用 + 法
-            result[p_name] = p + (-self.scheduler(round_i)) * grad
+            grad = pseudo_grads[p_name]
+            if p_name not in self.buffer['m']:
+                # 当前的 m 和 v 的buffer是不存在的
+                self.buffer['m'][p_name] = np.zeros_like(p)
+                self.buffer['v'][p_name] = np.zeros_like(p)
+                self.buffer['step'][p_name] = 0
+
+            m_t_minus_1, v_minus_1 = self.buffer['m'][p_name], self.buffer['v'][p_name]
+
+            self.buffer['step'][p_name] += 1
+
+            step, beta0, beta1 = self.buffer['step'][p_name], self.beta0, self.beta1
+            #
+            alpha_t = self.scheduler(round_i) * math.sqrt(1 - beta1 ** step) / (1 - beta0 ** step)
+            m_t_minus_1 = m_t_minus_1 * beta0
+            m_t_minus_1 = m_t_minus_1 + grad * (1 - beta0)
+            v_minus_1 = v_minus_1 * beta1
+            v_minus_1 = v_minus_1 + grad * grad * (1 - beta1)
+
+            denom = np.sqrt(v_minus_1)
+            denom += self.epsilon
+
+            result[p_name] = p + (m_t_minus_1 / denom) * alpha_t
+
         return result

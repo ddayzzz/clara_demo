@@ -46,6 +46,7 @@ class FederatedServer(fed_service.FederatedTrainingServicer):
         self.min_num_clients = max(min_num_clients, 1)
         # self.max_num_clients = min(max_num_clients, self.min_num_clients)
         self.max_num_clients = max(max_num_clients, 1)
+        # 定义了模型聚合的相关方法
         self.model_manager = ServerModelManager(
             start_round=start_round,
             num_rounds=num_rounds,

@@ -7,7 +7,7 @@ import tensorflow as tf
 
 
 from fed_learn.fed_utils import (FED_DELTA_W)
-from adaptive_optimizers.optimizers import AdaptiveOptimizer, SGD
+from adaptive_optimizers.optimizers import AdaptiveOptimizer, SGD, Adam
 
 
 class AdaptiveAggregator:
@@ -19,8 +19,7 @@ class AdaptiveAggregator:
     def __init__(self,
                  algo_optimizer=None,
                  exclude_vars=None,
-                 server_lr=1.0,
-                 algo_kws=None):
+                 algo_kws=None,):
         """
 
         :param algo_optimizer: 服务端的优化器
@@ -29,20 +28,20 @@ class AdaptiveAggregator:
         """
         self.exclude_vars = re.compile(exclude_vars) if exclude_vars else None
         self.aggregate_type = FED_DELTA_W
-        self.server_lr = server_lr
 
         self.logger = logging.getLogger('AdaptiveAggregator')
-        self.logger.info('optimizer select: {0}, initialized with parameters : {1}, server_lr: {2}'.format(algo_optimizer, algo_kws, server_lr))
-
+        self.logger.info('adaptive algorithm select: {0}, initialized with parameters : {1}'.format(algo_optimizer, algo_kws))
         if algo_optimizer is not None:
-            assert algo_optimizer in ['fedavg', 'fedav', 'fed']
+            assert algo_optimizer in ['fedavg', 'fedavgm', 'fedadam']
         else:
             algo_optimizer = 'fedavg'
         self.algo_optimizer = algo_optimizer
 
         if algo_kws is None:
             algo_kws = dict()
+
         self.algo_kws = algo_kws
+
         self.server_optimizer = self._choose_server_optimizer()
 
     def aggregate(self, accumulator, model):
@@ -105,13 +104,11 @@ class AdaptiveAggregator:
 
     def _choose_server_optimizer(self) -> AdaptiveOptimizer:
         if self.algo_optimizer == 'fedavg':
-            return SGD(lr=self.server_lr)
+            return SGD(**self.algo_kws)
         elif self.algo_optimizer == 'fedavgm':
-            return SGD(lr=self.server_lr, momentum=self.algo_kws['momentum'])
-        # elif self.algo_optimizer == 'fedadam':
-        #     return tf.keras.optimizers.Adam(learning_rate=self.server_lr,
-        #                                     momentum=self.algo_kws['momentum'],
-        #                                     epsilon=self.algo_kws['epsilon'])
+            return SGD(**self.algo_kws)
+        elif self.algo_optimizer == 'fedadam':
+            return Adam(**self.algo_kws)
         else:
             raise NotImplementedError('Not implementation : {0}'.format(self.algo_optimizer))
 

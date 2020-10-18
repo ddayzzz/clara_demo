@@ -6,7 +6,7 @@ my_dir="$(dirname "$0")"
 echo "MMAR_ROOT set to $MMAR_ROOT"
 echo "Inference on round range: start=$1, end=$2, step=$3"
 echo "Using data list file: $4"
-echo "Output prefix: $5"
+echo "Experiment name is $5"
 
 start=$1
 end=$2
@@ -14,7 +14,7 @@ step=$3
 for ((i=$start;i<$end;i=i+$step))
 do
   echo "Validation on round $i"
-  report_path=${MMAR_ROOT}/eval/$5_result_on_round_$i
+  report_path=${MMAR_ROOT}/eval/$5/result_on_round_$i
   mkdir -vp $report_path
   # Data list containing all data
   CONFIG_FILE=config/config_validation.json
@@ -28,6 +28,7 @@ do
       DATASET_JSON=$4 \
       do_validation=false \
       output_infer_result=true \
+      MMAR_CKPT_DIR=${MMAR_ROOT}/models/$5 \
       MMAR_EVAL_OUTPUT_PATH=$report_path \
       ROUND_NUM=$i
 done

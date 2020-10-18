@@ -5,9 +5,10 @@ DOCKER_IMAGE=nvcr.io/nvidia/clara-train-sdk:v3.0
 DOCKER_Run_Name=brats_seg
 
 jnotebookPort=19010
-GPU_IDs='7'
+GPU_IDs=$1
 AIAA_PORT=19011
 
+echo "GPU IDs is $1"
 #################################### check if parameters are empty
 
 #################################### check if name is used then exit

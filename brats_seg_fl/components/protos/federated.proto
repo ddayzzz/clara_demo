@@ -1,0 +1,111 @@
+// services and messages for client and model training server communication
+
+syntax = "proto3";
+
+package fedlearn;
+
+import "tensorflow/core/framework/tensor.proto";
+import "google/protobuf/timestamp.proto";
+
+// The global federated model interfaces
+service FederatedTraining {
+    // client registration, so that it will contribute to the training
+    rpc Register (ClientLogin) returns (FederatedSummary) {}
+    // client quiting the federated training
+    rpc Quit (ClientState) returns (FederatedSummary) {}
+    // server to client model sharing
+    rpc GetModel (ClientState) returns (CurrentModel) {}
+    // client to server contribution submission
+    rpc SubmitUpdate (Contribution) returns (FederatedSummary) {}
+    // client to server heartbeat keep live
+    rpc Heartbeat (Token) returns (FederatedSummary) {}
+}
+
+// The current federated model's meta data
+message ModelMetaData {
+    message Task {
+        // the server's task name, e.g. BraTS segmentation
+        string name = 1;
+        string version = 2;
+    }
+    // unique task identifier for the server
+    Task task = 1;
+    // the current global step of the federated model
+    int64 current_round = 2;
+    // time stamp when the model is shared
+    google.protobuf.Timestamp created = 3;
+}
+
+// A model consists of multiple tensors
+message ModelData {
+    map<string, tensorflow.TensorProto> params = 1;
+}
+
+
+//////////////////////////////////////////////////
+// Server specific message (created by the server)
+/////////////////////////////////////////////////
+
+
+// The server's response of the current model parameters
+message CurrentModel {
+    // Model meta data for versioning of the current model
+    ModelMetaData meta = 1;
+    // The server's serialised deep learning model parameters
+    ModelData data = 2;
+    // 是否允许客户端进行本地模型的更新, 避免客户端过多的计算
+    int64 allowed_to_perform_update = 3;
+}
+
+// The server's summary of the model (for client's debugging purpose)
+message FederatedSummary {
+    ModelMetaData meta = 1;
+    // Additional details from server to clients
+    string comment = 2;
+    // The client token
+    string token = 3;
+}
+
+//////////////////////////////////////////////////
+// Client specific message (created by the client)
+/////////////////////////////////////////////////
+
+// The client login information
+message ClientLogin {
+    // The client identification
+    string client_id = 1;
+    // The client login token
+    string token = 2;
+    // The client running IP
+    string client_ip = 3;
+    // The client's model meta
+    ModelMetaData meta = 4;
+}
+
+// The client's request to join the federated round
+message ClientState {
+    // The client's model meta
+    ModelMetaData meta = 1;
+    // The client's identifier
+    string uid = 2;
+    // The client's token
+    string token = 3;
+}
+
+// The client's contribution to the current federated model
+message Contribution {
+    // The client's identity information
+    ClientState client = 1;
+    // number of location iterations used to compute this contribution
+    int64 n_iter = 2;
+    // type of the contribution, could be w or delta w
+    string type = 3;
+    // The contribution data (grads. or model params.) to be aggregated
+    ModelData data = 4;
+}
+
+// The client's heartbeat to keep the client live
+message Token {
+    // The client's token
+    string token = 1;
+}
